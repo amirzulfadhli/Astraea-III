@@ -1,0 +1,27 @@
+{
+  "language": "auto",
+  "agentsFolder": "sub_agents",
+  "conversationsFolder": "conversations",
+  "contextFolders": [
+    "note/atomic",
+    "note/fleet",
+    "note/lit"
+  ],
+  "autoConsultVault": true,
+  "autoDelegate": true,
+  "positions": {},
+  "providers": [
+    {
+      "id": "provider-1",
+      "kind": "openai-compat",
+      "model": "deepseek-reasoner",
+      "apiKey": "sk-dd725cd91fbf49ddb4c8dcde3cb7526a",
+      "baseURL": "https://api.deepseek.com"
+    }
+  ],
+  "activeProviderId": "provider-1",
+  "agencyFolder": "",
+  "economyMode": true,
+  "maxTokens": 0,
+  "lightProviderId": ""
+}

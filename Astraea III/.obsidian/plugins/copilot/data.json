@@ -1,0 +1,679 @@
+{
+  "userId": "f6ea00f4-960b-469c-bb67-1b45ce2b3b59",
+  "isPaidUser": false,
+  "isPlusUser": false,
+  "entitlementToken": "",
+  "entitlementExpiresAt": 0,
+  "plusLicenseKey": "",
+  "openAIApiKey": "",
+  "openAIOrgId": "",
+  "huggingfaceApiKey": "",
+  "cohereApiKey": "",
+  "anthropicApiKey": "",
+  "azureOpenAIApiKey": "",
+  "azureOpenAIApiInstanceName": "",
+  "azureOpenAIApiDeploymentName": "",
+  "azureOpenAIApiVersion": "",
+  "azureOpenAIApiEmbeddingDeploymentName": "",
+  "googleApiKey": "",
+  "openRouterAiApiKey": "",
+  "xaiApiKey": "",
+  "mistralApiKey": "",
+  "deepseekApiKey": "",
+  "siliconflowApiKey": "",
+  "defaultChainType": "llm_chain",
+  "defaultModelKey": "google/gemini-2.5-flash|openrouterai",
+  "embeddingModelKey": "openai/text-embedding-3-small|openrouterai",
+  "temperature": 0.1,
+  "contextTurns": 15,
+  "userSystemPrompt": "",
+  "openAIProxyBaseUrl": "",
+  "openAIEmbeddingProxyBaseUrl": "",
+  "stream": true,
+  "copilotFolder": "copilot",
+  "copilotRootHistory": [
+    "copilot"
+  ],
+  "upgradedToV8FromLegacy": false,
+  "defaultSaveFolder": "copilot/copilot-conversations",
+  "defaultConversationTag": "copilot-conversation",
+  "autosaveChat": true,
+  "autoAddActiveContentToContext": true,
+  "defaultOpenArea": "view",
+  "defaultSendShortcut": "enter",
+  "customPromptsFolder": "copilot/copilot-custom-prompts",
+  "indexVaultToVectorStore": "ON MODE SWITCH",
+  "qaExclusions": "copilot",
+  "qaInclusions": "",
+  "chatNoteContextPath": "",
+  "chatNoteContextTags": [],
+  "enableIndexSync": true,
+  "debug": false,
+  "maxSourceChunks": 30,
+  "enableInlineCitations": true,
+  "groqApiKey": "",
+  "activeModels": [
+    {
+      "name": "copilot-plus-flash",
+      "provider": "copilot-plus",
+      "enabled": true,
+      "isBuiltIn": true,
+      "core": true,
+      "plusExclusive": true,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "google/gemini-2.5-flash",
+      "provider": "openrouterai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "core": true,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gpt-5.5",
+      "provider": "openai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "core": true,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gpt-5.4-mini",
+      "provider": "openai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "core": true,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "google/gemini-3.5-flash",
+      "provider": "openrouterai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision",
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "claude-sonnet-4-6",
+      "provider": "anthropic",
+      "enabled": true,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision",
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gemini-3.5-flash",
+      "provider": "google",
+      "enabled": true,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision",
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gemini-3.1-flash-lite",
+      "provider": "google",
+      "enabled": true,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gemini-2.5-flash",
+      "provider": "google",
+      "enabled": true,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "google/gemini-3.1-pro-preview",
+      "provider": "openrouterai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision",
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "google/gemini-2.5-pro",
+      "provider": "openrouterai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "core": false,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "openai/gpt-5.5",
+      "provider": "openrouterai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "core": false,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "openai/gpt-5.4-mini",
+      "provider": "openrouterai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "core": false,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "grok-4.3",
+      "provider": "xai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "core": false,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "x-ai/grok-4.3",
+      "provider": "openrouterai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "core": false,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gpt-4.1",
+      "provider": "openai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "core": false,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gpt-4.1-mini",
+      "provider": "openai",
+      "enabled": false,
+      "isBuiltIn": true,
+      "core": false,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "claude-opus-4-7",
+      "provider": "anthropic",
+      "enabled": false,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision",
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "claude-haiku-4-5",
+      "provider": "anthropic",
+      "enabled": false,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision",
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gemini-3.1-pro-preview",
+      "provider": "google",
+      "enabled": false,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision",
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "gemini-2.5-pro",
+      "provider": "google",
+      "enabled": false,
+      "isBuiltIn": true,
+      "capabilities": [
+        "vision"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "deepseek-chat",
+      "provider": "deepseek",
+      "enabled": false,
+      "isBuiltIn": true,
+      "apiKey": ""
+    },
+    {
+      "name": "deepseek-reasoner",
+      "provider": "deepseek",
+      "enabled": false,
+      "isBuiltIn": true,
+      "capabilities": [
+        "reasoning"
+      ],
+      "apiKey": ""
+    },
+    {
+      "name": "deepseek-ai/DeepSeek-V3",
+      "provider": "siliconflow",
+      "enabled": false,
+      "isBuiltIn": false,
+      "baseUrl": "https://api.siliconflow.com/v1",
+      "apiKey": ""
+    },
+    {
+      "name": "deepseek-ai/DeepSeek-R1",
+      "provider": "siliconflow",
+      "enabled": false,
+      "isBuiltIn": false,
+      "baseUrl": "https://api.siliconflow.com/v1",
+      "capabilities": [
+        "reasoning"
+      ],
+      "apiKey": ""
+    }
+  ],
+  "activeEmbeddingModels": [
+    {
+      "name": "copilot-plus-small",
+      "provider": "copilot-plus",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "plusExclusive": true,
+      "apiKey": ""
+    },
+    {
+      "name": "copilot-plus-large",
+      "provider": "copilot-plus-jina",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "plusExclusive": true,
+      "believerExclusive": true,
+      "dimensions": 1024,
+      "apiKey": ""
+    },
+    {
+      "name": "copilot-plus-multilingual",
+      "provider": "copilot-plus-jina",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "plusExclusive": true,
+      "dimensions": 512,
+      "apiKey": ""
+    },
+    {
+      "name": "openai/text-embedding-3-small",
+      "provider": "openrouterai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "apiKey": ""
+    },
+    {
+      "name": "text-embedding-3-small",
+      "provider": "openai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "apiKey": ""
+    },
+    {
+      "name": "gemini-embedding-001",
+      "provider": "google",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "apiKey": ""
+    },
+    {
+      "name": "gemini-embedding-2-preview",
+      "provider": "google",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "apiKey": ""
+    },
+    {
+      "name": "Qwen/Qwen3-Embedding-0.6B",
+      "provider": "siliconflow",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "core": true,
+      "baseUrl": "https://api.siliconflow.com/v1",
+      "apiKey": ""
+    },
+    {
+      "name": "text-embedding-3-large",
+      "provider": "openai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "apiKey": ""
+    },
+    {
+      "name": "embed-multilingual-light-v3.0",
+      "provider": "cohereai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "apiKey": ""
+    },
+    {
+      "name": "text-embedding-004",
+      "provider": "google",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "apiKey": ""
+    },
+    {
+      "name": "azure-openai",
+      "provider": "azure openai",
+      "enabled": true,
+      "isBuiltIn": true,
+      "isEmbeddingModel": true,
+      "apiKey": ""
+    }
+  ],
+  "embeddingRequestsPerMin": 60,
+  "embeddingBatchSize": 16,
+  "disableIndexOnMobile": true,
+  "numPartitions": 1,
+  "lexicalSearchRamLimit": 100,
+  "promptUsageTimestamps": {},
+  "promptSortStrategy": "timestamp",
+  "chatHistorySortStrategy": "recent",
+  "projectsFolder": "copilot/projects",
+  "defaultConversationNoteName": "{$topic}@{$date}_{$time}",
+  "inlineEditCommands": [],
+  "projectList": [],
+  "lastDismissedVersion": null,
+  "passMarkdownImages": true,
+  "enableAutonomousAgent": true,
+  "enableCustomPromptTemplating": true,
+  "enableSemanticSearchV3": false,
+  "enableSelfHostMode": false,
+  "enableMiyo": false,
+  "enableMiyoSearchSkill": false,
+  "miyoSearchAll": false,
+  "miyoServerUrl": "",
+  "miyoSyncedExclusions": "",
+  "selfHostSearchProvider": "firecrawl",
+  "firecrawlApiKey": "",
+  "perplexityApiKey": "",
+  "supadataApiKey": "",
+  "docProcessorBackend": "plus",
+  "enableLexicalBoosts": true,
+  "suggestedDefaultCommands": false,
+  "autonomousAgentMaxIterations": 4,
+  "autonomousAgentEnabledToolIds": [
+    "localSearch",
+    "readNote",
+    "webSearch",
+    "pomodoro",
+    "youtubeTranscription",
+    "writeFile",
+    "editFile",
+    "updateMemory"
+  ],
+  "reasoningEffort": "low",
+  "verbosity": "medium",
+  "memoryFolderName": "copilot/memory",
+  "enableRecentConversations": true,
+  "maxRecentConversations": 30,
+  "enableSavedMemory": true,
+  "quickCommandIncludeNoteContext": true,
+  "autoIncludeTextSelection": false,
+  "autoAddSelectionToContext": false,
+  "autoAcceptEdits": false,
+  "diffViewMode": "split",
+  "userSystemPromptsFolder": "copilot/system-prompts",
+  "defaultSystemPromptTitle": "",
+  "autoCompactThreshold": 128000,
+  "convertedDocOutputFolder": "",
+  "agentMode": {
+    "byok": {},
+    "activeBackend": "opencode",
+    "backends": {
+      "claude": {
+        "defaultModel": {
+          "baseModelId": "default",
+          "effort": "medium"
+        }
+      }
+    },
+    "debugFullFrames": true,
+    "welcomeDismissed": false,
+    "skills": {
+      "folder": "copilot/skills"
+    },
+    "deviceProfiles": {
+      "6f8218ab-5da4-4828-ac54-dcfa3c556539": {
+        "opencode": {
+          "binaryPath": "C:\\Users\\amirk\\.obsidian-copilot\\opencode\\1.18.16\\bin\\opencode.exe",
+          "binaryVersion": "1.18.16",
+          "binarySource": "managed",
+          "probeSessionId": "ses_fc663e3beffeGmUG4CZAS61mW7"
+        }
+      }
+    }
+  },
+  "providers": {
+    "c30e2d8a-6f21-4ad0-9f35-98af309372cf": {
+      "providerType": "anthropic",
+      "displayName": "Claude",
+      "origin": {
+        "kind": "agent",
+        "agentType": "claude"
+      },
+      "requiresApiKey": false,
+      "providerId": "c30e2d8a-6f21-4ad0-9f35-98af309372cf",
+      "addedAt": 1787671340741,
+      "apiKeyKeychainId": null
+    },
+    "96d1f28e-26e3-449e-81c5-4ada0ba785d4": {
+      "providerType": "openai-compatible",
+      "displayName": "opencode",
+      "origin": {
+        "kind": "agent",
+        "agentType": "opencode"
+      },
+      "requiresApiKey": false,
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "addedAt": 1787672927340,
+      "apiKeyKeychainId": null
+    }
+  },
+  "configuredModels": [
+    {
+      "providerId": "c30e2d8a-6f21-4ad0-9f35-98af309372cf",
+      "info": {
+        "id": "default",
+        "displayName": "Default (recommended)",
+        "description": "Use the default model (currently Opus 5 (1M context)) · $5/$25 per Mtok"
+      },
+      "configuredModelId": "5431d898-8871-4ce1-9215-2b3bf1667bda",
+      "configuredAt": 1787671341203
+    },
+    {
+      "providerId": "c30e2d8a-6f21-4ad0-9f35-98af309372cf",
+      "info": {
+        "id": "opus[1m]",
+        "displayName": "Opus (1M context)",
+        "description": "Opus 5 with 1M context · Best for everyday, complex tasks · $5/$25 per Mtok"
+      },
+      "configuredModelId": "1a765a94-03f4-461d-8953-27836462307a",
+      "configuredAt": 1787671341207
+    },
+    {
+      "providerId": "c30e2d8a-6f21-4ad0-9f35-98af309372cf",
+      "info": {
+        "id": "claude-fable-5[1m]",
+        "displayName": "Fable",
+        "description": "Fable 5 · Most capable for your hardest and longest-running tasks · $10/$50 per Mtok"
+      },
+      "configuredModelId": "0ed38d6f-09e5-4abe-b61c-a2ae54d4ffd9",
+      "configuredAt": 1787671341209
+    },
+    {
+      "providerId": "c30e2d8a-6f21-4ad0-9f35-98af309372cf",
+      "info": {
+        "id": "sonnet",
+        "displayName": "Sonnet",
+        "description": "Sonnet 5 · Efficient for routine tasks · $3/$15 per Mtok"
+      },
+      "configuredModelId": "0dde86e1-5434-41d1-83ab-3dc96d451082",
+      "configuredAt": 1787671341211
+    },
+    {
+      "providerId": "c30e2d8a-6f21-4ad0-9f35-98af309372cf",
+      "info": {
+        "id": "haiku",
+        "displayName": "Haiku",
+        "description": "Haiku 4.5 · Fastest for quick answers · $1/$5 per Mtok"
+      },
+      "configuredModelId": "1a1dddf3-f754-4e1c-aba8-a6a9d9c31a84",
+      "configuredAt": 1787671341212
+    },
+    {
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "info": {
+        "id": "opencode/big-pickle",
+        "displayName": "OpenCode Zen/Big Pickle"
+      },
+      "configuredModelId": "d3a8daaa-298c-4916-aac3-0b3f7113ca44",
+      "configuredAt": 1787672927348
+    },
+    {
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "info": {
+        "id": "opencode/hy3-free",
+        "displayName": "OpenCode Zen/Hy3 Free"
+      },
+      "configuredModelId": "63c6e7f2-1f53-4d55-9b96-110e9f52e165",
+      "configuredAt": 1787672927355
+    },
+    {
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "info": {
+        "id": "opencode/mimo-v2.5-free",
+        "displayName": "OpenCode Zen/MiMo V2.5 Free"
+      },
+      "configuredModelId": "5f23e9f7-df5d-4b56-9099-63a24555af07",
+      "configuredAt": 1787672927371
+    },
+    {
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "info": {
+        "id": "opencode/muse-spark-1.2-contributor-free",
+        "displayName": "OpenCode Zen/Muse Spark 1.2 Free"
+      },
+      "configuredModelId": "637a5ef1-e99d-41f0-bcc0-f29fdeeab2cd",
+      "configuredAt": 1787672927376
+    },
+    {
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "info": {
+        "id": "opencode/nemotron-3-ultra-free",
+        "displayName": "OpenCode Zen/Nemotron 3 Ultra Free"
+      },
+      "configuredModelId": "71686734-fa99-4193-a1ac-1f20bef1fb8d",
+      "configuredAt": 1787672927377
+    },
+    {
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "info": {
+        "id": "opencode/nemotron-3.5-lightning-free",
+        "displayName": "OpenCode Zen/Nemotron 3.5 Lightning Free"
+      },
+      "configuredModelId": "24e15a6f-c629-4ecf-afd2-bfb8b41b64c4",
+      "configuredAt": 1787672927378
+    },
+    {
+      "providerId": "96d1f28e-26e3-449e-81c5-4ada0ba785d4",
+      "info": {
+        "id": "opencode/x-preview-f-free",
+        "displayName": "OpenCode Zen/Ox Alpha Free (Unlimited)"
+      },
+      "configuredModelId": "3a965071-eee3-4c4b-875b-36c93297ec9a",
+      "configuredAt": 1787672927379
+    }
+  ],
+  "backends": {
+    "claude": {
+      "enabledModels": [
+        "5431d898-8871-4ce1-9215-2b3bf1667bda",
+        "1a765a94-03f4-461d-8953-27836462307a",
+        "0ed38d6f-09e5-4abe-b61c-a2ae54d4ffd9",
+        "0dde86e1-5434-41d1-83ab-3dc96d451082",
+        "1a1dddf3-f754-4e1c-aba8-a6a9d9c31a84"
+      ]
+    },
+    "opencode": {
+      "enabledModels": [
+        "d3a8daaa-298c-4916-aac3-0b3f7113ca44",
+        "63c6e7f2-1f53-4d55-9b96-110e9f52e165",
+        "5f23e9f7-df5d-4b56-9099-63a24555af07"
+      ]
+    }
+  },
+  "_keychainVaultId": "0bb8605b",
+  "settingsVersion": 11
+}

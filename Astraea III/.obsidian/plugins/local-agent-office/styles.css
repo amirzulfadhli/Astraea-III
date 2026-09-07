@@ -1,0 +1,318 @@
+/* ============ Office ============ */
+.lao-office-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--background-primary);
+}
+
+/* Toolbar */
+.lao-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+}
+.lao-brand {
+  font: 700 13px/1 var(--font-interface);
+  letter-spacing: .3px;
+  color: var(--text-normal);
+}
+.lao-count {
+  font: 500 11px/1 var(--font-monospace);
+  color: var(--text-muted);
+  padding: 3px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+}
+.lao-search {
+  width: 180px;
+  height: 28px;
+  font-size: 12px;
+}
+.lao-conn-btn {
+  height: 28px;
+  font: 600 11px/1 var(--font-monospace);
+  letter-spacing: .4px;
+  cursor: pointer;
+}
+.lao-conn-btn.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.lao-gear-btn {
+  height: 28px;
+  width: 30px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+.lao-add-btn { height: 28px; font: 600 11px/1 var(--font-interface); cursor: pointer; }
+.lao-folder-status { margin: -6px 0 14px; padding-left: 2px; }
+
+/* Floor: responsive grid of room panels */
+.lao-floor {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-auto-rows: min-content;
+  gap: 16px;
+  align-content: start;
+}
+
+.lao-conn-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 50; /* above room panels/cards so connection lines are visible (not hidden behind) */
+}
+.lao-link { stroke-width: 1.4; fill: none; }
+.lao-link.faint { stroke: var(--text-faint); opacity: .25; }
+.lao-link.active { stroke: var(--interactive-accent); opacity: .9; stroke-width: 1.8; }
+.lao-link.delegate {
+  stroke: var(--interactive-accent); stroke-width: 2.4; opacity: 1;
+  stroke-dasharray: 7 6;
+  filter: drop-shadow(0 0 4px var(--interactive-accent));
+  animation: lao-dash .6s linear infinite;
+}
+@keyframes lao-dash { to { stroke-dashoffset: -13; } }
+.lao-status.waiting { background: #e0a23c; box-shadow: 0 0 0 3px color-mix(in srgb, #e0a23c 25%, transparent); animation: lao-pulse 1.2s ease-in-out infinite; }
+
+/* Room panel */
+.lao-room-panel {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+  overflow: hidden;
+  z-index: 2;
+}
+.lao-room-panel.hidden { display: none; }
+.lao-room-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary-alt);
+}
+.lao-room-name {
+  font: 700 10px/1 var(--font-monospace);
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+.lao-room-count {
+  font: 600 10px/1 var(--font-monospace);
+  color: var(--text-faint);
+  min-width: 18px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+}
+
+/* Desks (cards) */
+.lao-desks { display: flex; flex-direction: column; padding: 8px; gap: 8px; }
+
+.lao-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 9px;
+  background: var(--background-primary);
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease, opacity .12s ease;
+}
+.lao-card.hidden { display: none; }
+.lao-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+}
+.lao-card.dim { opacity: .3; }
+.lao-card.dim.linked { opacity: .75; }
+.lao-card.linked { border-color: var(--accent); }
+.lao-card.working {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 14px -2px var(--accent);
+}
+.lao-card.waiting {
+  border-color: #e0a23c;
+  box-shadow: 0 0 0 1px #e0a23c, 0 0 12px -2px #e0a23c;
+  opacity: .9;
+}
+.lao-card.waiting::after {
+  content: "esperando…";
+  position: absolute; top: 6px; left: 12px;
+  font: 600 8px/1 var(--font-monospace); letter-spacing: .4px;
+  color: #e0a23c; text-transform: uppercase;
+}
+
+.lao-avatar {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font: 700 15px/1 var(--font-interface);
+  color: #fff;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  user-select: none;
+}
+
+.lao-card-main { flex: 1; min-width: 0; }
+.lao-card-name {
+  font: 600 13px/1.2 var(--font-interface);
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lao-card-role {
+  font: 400 11px/1.3 var(--font-interface);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.lao-card-meta { margin-top: 4px; }
+.lao-card-links {
+  font: 500 9px/1 var(--font-monospace);
+  letter-spacing: .3px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+.lao-status {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--background-modifier-border);
+}
+.lao-card-actions { position: absolute; top: 6px; right: 8px; opacity: 0; transition: opacity .12s ease; }
+.lao-card:hover .lao-card-actions { opacity: 1; }
+.lao-card-act { height: 22px; padding: 0 6px; font-size: 11px; line-height: 1; cursor: pointer; }
+.lao-status.working {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent), 0 0 10px var(--accent);
+  animation: lao-pulse 1.2s ease-in-out infinite;
+}
+@keyframes lao-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+
+/* Empty state */
+.lao-empty {
+  margin: auto;
+  max-width: 420px;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+.lao-empty h3 { color: var(--text-normal); margin-bottom: 8px; }
+.lao-empty p { font-size: 13px; line-height: 1.5; }
+
+@keyframes lao-bubble { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* @agent inline answer callout */
+.callout[data-callout="agent"] { --callout-color: 124, 92, 255; --callout-icon: lucide-bot; }
+
+/* Squad step approval modal */
+.lao-step-output { width: 100%; resize: vertical; font-size: 13px; line-height: 1.5; }
+.lao-step-actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ============ Chat ============ */
+.lao-chat { display: flex; flex-direction: column; height: 100%; }
+.lao-chat-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+.lao-chat-avatar {
+  width: 32px; height: 32px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  border-radius: 9px;
+  background: var(--accent); color: #fff;
+  font: 700 14px/1 var(--font-interface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+.lao-chat-head-name { font: 600 13px/1.2 var(--font-interface); color: var(--text-normal); }
+.lao-chat-head-room { font: 500 10px/1.2 var(--font-monospace); color: var(--text-muted); letter-spacing: .3px; margin-top: 2px; }
+.lao-chat-log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 2px; }
+.lao-msg.streaming::after { content: "▋"; opacity: .5; animation: lao-bubble 1s steps(1) infinite; }
+.lao-msg {
+  margin-bottom: 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  max-width: 86%;
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lao-msg.user { background: var(--interactive-accent); color: var(--text-on-accent); margin-left: auto; border-bottom-right-radius: 4px; }
+.lao-msg.assistant { background: var(--background-secondary); border-bottom-left-radius: 4px; }
+.lao-chat-bar {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  padding: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.lao-chat-bar button { height: 32px; }
+.lao-chat-input { flex: 1; resize: none; max-height: 140px; }
+
+/* @ mention suggester */
+.lao-suggest {
+  position: absolute;
+  left: 10px; right: 10px; bottom: calc(100% + 4px);
+  max-height: 220px; overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .35);
+  z-index: 20;
+  padding: 4px;
+}
+.lao-suggest-item {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+}
+.lao-suggest-item.active, .lao-suggest-item:hover { background: var(--background-modifier-hover); }
+.lao-suggest-label { font: 600 12px/1 var(--font-interface); color: var(--text-normal); }
+.lao-suggest-sub { font: 500 10px/1 var(--font-monospace); color: var(--text-muted); margin-left: auto; }
+
+/* ActionApprovalModal */
+.lao-tool-badge { display:inline-block; padding:2px 10px; border-radius:6px; font-size:12px; font-weight:600; margin:4px 0 8px; }
+.lao-tool-badge.is-create { background: var(--color-green, #1d9e75); color:#fff; }
+.lao-tool-badge.is-edit { background: var(--color-orange, #ba7517); color:#fff; }
+.lao-tool-badge.is-memory { background: var(--color-purple, #534AB7); color:#fff; }
+.lao-bs-agents { display:flex; flex-direction:column; gap:4px; max-height:160px; overflow:auto; margin:8px 0; padding:6px; border:1px solid var(--background-modifier-border); border-radius:6px; }
+.lao-bs-agent { display:flex; align-items:center; gap:6px; cursor:pointer; }
+.lao-bs-rounds { margin:8px 0; }
+.lao-bs-rounds input { width:60px; }
+.lao-bs-log { max-height:340px; overflow:auto; margin:8px 0; padding:8px; border:1px solid var(--background-modifier-border); border-radius:6px; }
+.lao-bs-turn { margin-bottom:10px; line-height:1.5; }
+.lao-bs-status { margin:6px 0; font-style:italic; }
+.lao-diff { font-family: var(--font-monospace); font-size:12px; max-height:200px; overflow:auto; border:1px solid var(--background-modifier-border); border-radius:6px; padding:6px; margin-bottom:10px; }
+.lao-diff-row { white-space:pre-wrap; }
+.lao-diff-row.is-add { background: rgba(29,158,117,.15); }
+.lao-diff-row.is-del { background: rgba(226,75,74,.15); }
+
+.lao-spacer { flex: 1; }
