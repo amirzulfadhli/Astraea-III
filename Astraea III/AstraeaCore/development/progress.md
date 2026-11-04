@@ -44,7 +44,9 @@ The portable behavioral suite runs against the actual pure module source in the 
 
 Tests cover ordered orchestration, role/provider substitution, source hashes and Unicode spans, forged/missing evidence, duplicate claims, critique/confidence gates, budgets and invalid usage, provider timeout/failure, checkpoint ordering/failure, same-run concurrency, stale approvals, replay/cancellation, Git conflicts/remote changes/human edits, unsafe paths, secret/config exclusions and self-trigger suppression.
 
-For reproducibility, use the commands in the Core README in a cloud checkout. Cloud Node CI status is reported with the review branch; a cloud V8 pass alone is not claimed as end-to-end Git/Obsidian verification.
+Verified implementation commit `3401932006b7f6baf4682c2da27ada8cbcd6883d` in [GitHub Actions run 41858508335](https://github.com/amirzulfadhli/Astraea-III/actions/runs/41858508335): **79 tests passed, 0 failed on Node 22; 79 passed, 0 failed on Node 24**. All module syntax checks and the bounded demonstration passed in both jobs. The portable cloud runner also passed all 79 tests; the actual registry smoke run completed five steps and stopped at `awaiting_approval`.
+
+The native Node and cloud demonstration produced the same approval hash: `5d8b1f5ace506a4ec655c9ef5f8dae32092d989c6698f0d226e727b3aaf701ed`. This verifies the fixture contract consistently across runtimes, not end-to-end Git/Obsidian synchronization. Use the commands in the Core README to reproduce the checks in a cloud checkout.
 
 ## Remaining limitations and next phase
 
