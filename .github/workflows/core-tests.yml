@@ -1,0 +1,44 @@
+name: Astraea Core tests
+
+on:
+  push:
+    branches: [main, 'astraea/**']
+    paths:
+      - 'Astraea III/AstraeaCore/**'
+      - '.github/workflows/core-tests.yml'
+  pull_request:
+    paths:
+      - 'Astraea III/AstraeaCore/**'
+      - '.github/workflows/core-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Check module syntax
+        run: |
+          node --check "Astraea III/AstraeaCore/src/contracts.mjs"
+          node --check "Astraea III/AstraeaCore/src/core.mjs"
+          node --check "Astraea III/AstraeaCore/src/sync-policy.mjs"
+          node --check "Astraea III/AstraeaCore/examples/fixture.mjs"
+          node --check "Astraea III/AstraeaCore/examples/demo.mjs"
+          node --check "Astraea III/AstraeaCore/test/suite.mjs"
+          node --check "Astraea III/AstraeaCore/test/run.mjs"
+      - name: Run behavior suite
+        run: node "Astraea III/AstraeaCore/test/run.mjs"
+      - name: Run bounded demonstration
+        run: node "Astraea III/AstraeaCore/examples/demo.mjs"

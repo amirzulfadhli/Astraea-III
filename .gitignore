@@ -1,0 +1,23 @@
+# Private credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime output (review/sanitize exports before adding them explicitly)
+/Astraea III/AstraeaCore/drafts/
+/Astraea III/AstraeaCore/runs/
+/Astraea III/AstraeaCore/cache/
+/Astraea III/AstraeaCore/sync-state.json
+/Astraea III/AstraeaCore/*.log
+coverage/
+node_modules/
+
+# Existing vault-generated data: these rules do not untrack prior history
+/Astraea III/.copilot/model-catalog-cache.json
+/Astraea III/.smart-env/
+/Astraea III/.obsidian/workspace*.json
+/Astraea III/.obsidian/plugins/**/data.json
