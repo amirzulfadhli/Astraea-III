@@ -393,5 +393,11 @@ export async function runSuite(api, hash) {
     core.createRun(job); const run = await core.execute(job.runId);
     eq(run.artifact.manifest.sources[0].provenance, job.sources[0].provenance);
   });
+
+  await test("queued source hash cannot be altered independently of its content", async () => {
+    const {core, job} = setup(); const saved = core.createRun(job);
+    saved.job.sources[0].contentHash = "a".repeat(64);
+    await rejects(() => setup().core.restoreRun(saved), "CHECKPOINT_IDENTITY_MISMATCH");
+  });
   return {passed: results.filter(r => r.passed).length, failed: results.filter(r => !r.passed).length, results};
 }

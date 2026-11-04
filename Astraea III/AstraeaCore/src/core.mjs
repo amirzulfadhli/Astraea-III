@@ -69,7 +69,8 @@ export class AstraeaCore {
     const fresh = this.createRun(snapshot.job);
     try {
       check(snapshot.id === fresh.id && snapshot.jobId === fresh.jobId && snapshot.eventId === fresh.eventId &&
-        snapshot.jobHash === fresh.jobHash && snapshot.registryHash === fresh.registryHash, "CHECKPOINT_IDENTITY_MISMATCH");
+        snapshot.jobHash === fresh.jobHash && snapshot.registryHash === fresh.registryHash &&
+        canonical(snapshot.job) === canonical(fresh.job), "CHECKPOINT_IDENTITY_MISMATCH");
       check(Array.isArray(snapshot.steps) && snapshot.steps.length <= ROLES.length, "INVALID_CHECKPOINT");
       check(Array.isArray(snapshot.audit) && snapshot.audit.length <= 10000 &&
         snapshot.audit.every((e, i) => e.sequence === i + 1 && typeof e.type === "string" &&
@@ -97,7 +98,8 @@ export class AstraeaCore {
         if (step.status === "completed") {
           check(step.usage, "INVALID_CHECKPOINT_USAGE");
           const output = this.#validate(worker.role, step.output, rebuilt);
-          check(fingerprint(output, this.#hash) === step.outputHash, "CHECKPOINT_OUTPUT_MISMATCH");
+          check(fingerprint(output, this.#hash) === step.outputHash &&
+            canonical(output) === canonical(step.output), "CHECKPOINT_OUTPUT_MISMATCH");
           if (output.claims) rebuilt.claims.push(...output.claims);
         }
         rebuilt.steps.push(copy(step));
