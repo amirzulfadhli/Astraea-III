@@ -328,5 +328,70 @@ export async function runSuite(api, hash) {
     core.createRun(job); const run = await core.execute(job.runId);
     eq(run.error, "PROVIDER_FAILURE"); assert(!JSON.stringify(run).includes("private-provider-data"));
   });
+
+  await test("completed checkpoint resumes remaining roles without reissuing a request", async () => {
+    const checkpoints = [];
+    const {core, job} = setup({checkpoint: async run => {checkpoints.push(run);}});
+    core.createRun(job); await core.execute(job.runId);
+    const saved = checkpoints.find(r => r.status === "running" && r.steps.length === 2 && r.steps[1].status === "completed");
+    const next = setup(); next.core.restoreRun(saved); const recovered = await next.core.execute(job.runId);
+    eq(recovered.status, "awaiting_approval"); eq(next.calls.map(c => c.role), ["Analyst", "Critic", "Synthesizer"]);
+    eq(recovered.usage.calls, 5);
+  });
+  await test("in-flight checkpoint recovers to reconciliation without dispatch", async () => {
+    const checkpoints = [];
+    const {core, job} = setup({checkpoint: async run => {checkpoints.push(run);}});
+    core.createRun(job); await core.execute(job.runId);
+    const saved = checkpoints.find(r => r.steps.length === 2 && r.steps[1].status === "running");
+    const next = setup(); const restored = next.core.restoreRun(saved);
+    eq(restored.status, "needs_reconciliation"); const result = await next.core.execute(job.runId);
+    eq(result.usage, saved.usage); eq(next.calls.length, 0);
+  });
+  await test("completed approval checkpoint replays with no dispatch", async () => {
+    const {core, job} = setup(); core.createRun(job); const run = await core.execute(job.runId);
+    const approved = await core.review(job.runId, {actor: "human", artifactHash: run.artifact.hash, decision: "approve"});
+    const next = setup(); next.core.restoreRun(approved); eq((await next.core.execute(job.runId)).status, "approved");
+    eq(next.calls.length, 0);
+  });
+  await test("registry change rejects recovered checkpoint", async () => {
+    const {core, job} = setup(); const saved = core.createRun(job);
+    const next = setup({mutate: r => {r[0].modelId = "changed";}});
+    await rejects(() => next.core.restoreRun(saved), "CHECKPOINT_IDENTITY_MISMATCH");
+  });
+  await test("tampered source snapshot cannot reuse prior job identity", async () => {
+    const {core, job} = setup(); const saved = core.createRun(job); saved.job.sources[0].content = "tampered";
+    const next = setup(); await rejects(() => next.core.restoreRun(saved), "CHECKPOINT_IDENTITY_MISMATCH");
+  });
+  await test("tampered usage cannot bypass recovered budget accounting", async () => {
+    const {core, job} = setup(); core.createRun(job); const saved = await core.execute(job.runId);
+    saved.usage.tokens = 1; const next = setup();
+    await rejects(() => next.core.restoreRun(saved), "CHECKPOINT_BUDGET_MISMATCH");
+  });
+  await test("tampered artifact cannot retain a recovered approval", async () => {
+    const {core, job} = setup(); core.createRun(job); const saved = await core.execute(job.runId);
+    saved.artifact.markdown += "tampered"; const next = setup();
+    await rejects(() => next.core.restoreRun(saved), "CHECKPOINT_ARTIFACT_MISMATCH");
+  });
+  await test("claim tampering is detected before recovery", async () => {
+    const {core, job} = setup(); core.createRun(job); const saved = await core.execute(job.runId);
+    saved.claims[0].text = "tampered"; const next = setup();
+    await rejects(() => next.core.restoreRun(saved), "CHECKPOINT_CLAIMS_MISMATCH");
+  });
+  await test("unsupported run schemas fail closed", () => {
+    const {core, job} = setup(); const saved = core.createRun(job); saved.schemaVersion = "0.1";
+    return rejects(() => setup().core.restoreRun(saved), "UNSUPPORTED_RUN_SCHEMA");
+  });
+  await test("revision-needed checkpoint cannot resume past its gate", async () => {
+    const {core, job} = setup({provider: altered((r,v) => {
+      if (r.role === "Critic") v.output.findings = [{severity: "blocking", text: "Unresolved contradiction"}];
+    })}); core.createRun(job); const saved = await core.execute(job.runId); saved.status = "running";
+    await rejects(() => setup().core.restoreRun(saved), "CHECKPOINT_GATE_BYPASS");
+  });
+  await test("Git capture provenance survives normalization and synthesis", async () => {
+    const {core, job} = setup(); job.sources[0].provenance = {
+      repository: "amirzulfadhli/Astraea-III", commit: "a".repeat(40), blob: "b".repeat(40)};
+    core.createRun(job); const run = await core.execute(job.runId);
+    eq(run.artifact.manifest.sources[0].provenance, job.sources[0].provenance);
+  });
   return {passed: results.filter(r => r.passed).length, failed: results.filter(r => !r.passed).length, results};
 }

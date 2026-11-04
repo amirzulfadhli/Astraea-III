@@ -21,3 +21,8 @@ node_modules/
 /Astraea III/.smart-env/
 /Astraea III/.obsidian/workspace*.json
 /Astraea III/.obsidian/plugins/**/data.json
+
+# Durable operational storage (also required to live outside the repository)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
