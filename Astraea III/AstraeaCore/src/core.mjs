@@ -103,7 +103,8 @@ export class AstraeaCore {
           response = await Promise.race([
             Promise.resolve().then(() => provider.execute(copy({requestId: step.requestId,
               workerId: worker.id, role: worker.role, modelId: worker.modelId, context,
-              limits: {tokens: worker.maxTokens, microUsd: worker.maxMicroUsd}}), {signal: controller.signal})),
+              limits: {tokens: worker.maxTokens, microUsd: worker.maxMicroUsd}}), {signal: controller.signal}))
+              .catch(() => { throw new CoreError("PROVIDER_FAILURE"); }),
             new Promise((_, reject) => { timer = setTimeout(() => {
               controller.abort(); reject(new CoreError("PROVIDER_TIMEOUT"));
             }, run.job.budget.timeoutMs); })
@@ -116,7 +117,7 @@ export class AstraeaCore {
         run.usage.microUsd -= worker.maxMicroUsd - response.usage.microUsd;
         const output = this.#validate(worker.role, response.output, run);
         step.output = output; step.outputHash = fingerprint(output, this.#hash); step.status = "completed";
-        step.usage = copy(response.usage);
+        step.usage = {tokens: response.usage.tokens, microUsd: response.usage.microUsd};
         this.#event(run, "validated", {stepId: step.id, outputHash: step.outputHash, usage: step.usage});
         if (worker.role === "Researcher" || worker.role === "Analyst") {
           run.claims.push(...output.claims);

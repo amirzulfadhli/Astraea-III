@@ -314,5 +314,19 @@ export async function runSuite(api, hash) {
     const changed = JSON.parse(JSON.stringify(run.artifact.manifest)); changed.claims[0].confidence = 0.7;
     assert(fingerprint({markdown: run.artifact.markdown, manifest: changed}, hash) !== run.artifact.hash);
   });
+
+  await test("provider cannot leak arbitrary usage metadata into audit or step state", async () => {
+    const {core, job} = setup({provider: altered((r, v) => {v.usage.secret = "private-provider-data";})});
+    core.createRun(job); const run = await core.execute(job.runId);
+    eq(run.status, "awaiting_approval"); assert(!JSON.stringify(run).includes("private-provider-data"));
+    eq(Object.keys(run.steps[0].usage).sort(), ["microUsd", "tokens"]);
+  });
+  await test("provider cannot impersonate an internal error code", async () => {
+    const {core, job} = setup({provider: {locality: "local", execute() {
+      throw new api.CoreError("private-provider-data");
+    }}});
+    core.createRun(job); const run = await core.execute(job.runId);
+    eq(run.error, "PROVIDER_FAILURE"); assert(!JSON.stringify(run).includes("private-provider-data"));
+  });
   return {passed: results.filter(r => r.passed).length, failed: results.filter(r => !r.passed).length, results};
 }
