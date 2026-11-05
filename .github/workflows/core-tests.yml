@@ -40,5 +40,18 @@ jobs:
           node --check "Astraea III/AstraeaCore/test/run.mjs"
       - name: Run behavior suite
         run: node "Astraea III/AstraeaCore/test/run.mjs"
+      - name: Check v0.2 module syntax
+        run: |
+          node --check "Astraea III/AstraeaCore/src/sqlite-store.mjs"
+          node --check "Astraea III/AstraeaCore/src/backup.mjs"
+          node --check "Astraea III/AstraeaCore/src/volume.mjs"
+          node --check "Astraea III/AstraeaCore/test/operations.test.mjs"
+          node --check "Astraea III/AstraeaCore/src/durable-core.mjs"
+          node --check "Astraea III/AstraeaCore/src/github-reader.mjs"
+          node --check "Astraea III/AstraeaCore/test/durable.test.mjs"
+          node --check "Astraea III/AstraeaCore/test/github-reader.test.mjs"
+          node --check "Astraea III/AstraeaCore/test/crash-worker.mjs"
+      - name: Run durable storage, crash recovery and read-only integration tests
+        run: node --test "Astraea III/AstraeaCore/test/durable.test.mjs" "Astraea III/AstraeaCore/test/github-reader.test.mjs" "Astraea III/AstraeaCore/test/operations.test.mjs"
       - name: Run bounded demonstration
         run: node "Astraea III/AstraeaCore/examples/demo.mjs"

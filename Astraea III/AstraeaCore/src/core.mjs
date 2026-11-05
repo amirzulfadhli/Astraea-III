@@ -1,7 +1,7 @@
 import { check, CoreError, textValue, id, integer, copy, canonical, fingerprint, digestText, sourceRecord, validateClaim } from "./contracts.mjs";
 
 export const ROLES = Object.freeze(["Scout", "Researcher", "Analyst", "Critic", "Synthesizer"]);
-const TERMINAL = ["awaiting_approval", "approved", "rejected", "failed", "needs_revision", "cancelled"];
+const TERMINAL = ["awaiting_approval", "approved", "rejected", "failed", "needs_revision", "cancelled", "needs_reconciliation"];
 
 export class AstraeaCore {
   #runs = new Map();
@@ -53,13 +53,97 @@ export class AstraeaCore {
     const prior = this.#runs.get(job.runId);
     if (prior) { check(prior.jobHash === jobHash, "RUN_ID_COLLISION"); return copy(prior); }
     check(!this.#events.has(job.eventId), "DUPLICATE_EVENT");
-    const run = {schemaVersion: "0.1", id: job.runId, jobId: job.id, eventId: job.eventId,
+    const run = {schemaVersion: "0.2", id: job.runId, jobId: job.id, eventId: job.eventId,
       jobHash, job: normalized, registryHash: fingerprint(this.#registry, this.#hash),
       status: "queued", steps: [], claims: [], audit: [], approvals: [],
       usage: {tokens: 0, microUsd: 0, calls: 0}, artifact: null, error: null};
     this.#event(run, "accepted", {jobHash});
     this.#runs.set(run.id, run); this.#events.set(job.eventId, run.id);
     return copy(run);
+  }
+
+  restoreRun(snapshot) {
+    check(snapshot && snapshot.schemaVersion === "0.2", "UNSUPPORTED_RUN_SCHEMA");
+    check(!this.#runs.has(snapshot.id), "RUN_ALREADY_LOADED");
+    // Rebuild the normalized job and validate every consumed checkpoint field before it gains authority.
+    const fresh = this.createRun(snapshot.job);
+    try {
+      check(snapshot.id === fresh.id && snapshot.jobId === fresh.jobId && snapshot.eventId === fresh.eventId &&
+        snapshot.jobHash === fresh.jobHash && snapshot.registryHash === fresh.registryHash &&
+        canonical(snapshot.job) === canonical(fresh.job), "CHECKPOINT_IDENTITY_MISMATCH");
+      const reconciliations = snapshot.reconciliations || [];
+      check(Array.isArray(reconciliations) && reconciliations.length <= 100 &&
+        reconciliations.every(r => typeof r.decisionId === "string" && /^[a-f0-9]{64}$/.test(r.commandHash) &&
+          typeof r.actor === "string" && r.actor.trim() && Number.isFinite(Date.parse(r.at))), "INVALID_RECONCILIATION_HISTORY");
+      check(Array.isArray(snapshot.steps) && snapshot.steps.length <= ROLES.length, "INVALID_CHECKPOINT");
+      check(Array.isArray(snapshot.audit) && snapshot.audit.length <= 10000 &&
+        snapshot.audit.every((e, i) => e.sequence === i + 1 && typeof e.type === "string" &&
+          Number.isFinite(Date.parse(e.at))), "INVALID_CHECKPOINT_AUDIT");
+      const rebuilt = {...fresh, steps: [], claims: [], ...(reconciliations.length ? {reconciliations: copy(reconciliations)} : {})};
+      const usage = {tokens: 0, microUsd: 0, calls: 0};
+      for (const [index, step] of snapshot.steps.entries()) {
+        const worker = this.#registry[index];
+        check(step.id === worker.role && step.role === worker.role && step.workerId === worker.id &&
+          step.providerId === worker.providerId && step.modelId === worker.modelId &&
+          step.requestId === fresh.id + ":" + worker.role, "CHECKPOINT_STEP_MISMATCH");
+        check(["completed", "running", "failed"].includes(step.status) &&
+          (step.status === "completed" || index === snapshot.steps.length - 1), "INVALID_CHECKPOINT_STEP");
+        const context = {schemaVersion: "0.2", jobId: fresh.jobId, runId: fresh.id, role: worker.role,
+          question: fresh.job.question, instruction: worker.instruction || "", sources: fresh.job.sources,
+          claims: rebuilt.claims, priorResults: rebuilt.steps.map(s => ({role: s.role, output: s.output})), tools: []};
+        check(step.contextHash === fingerprint(context, this.#hash), "CHECKPOINT_CONTEXT_MISMATCH");
+        let used = {tokens: worker.maxTokens, microUsd: worker.maxMicroUsd};
+        if (step.usage) {
+          integer(step.usage.tokens, "INVALID_CHECKPOINT_USAGE"); integer(step.usage.microUsd, "INVALID_CHECKPOINT_USAGE");
+          check(step.usage.tokens <= worker.maxTokens && step.usage.microUsd <= worker.maxMicroUsd, "INVALID_CHECKPOINT_USAGE");
+          used = step.usage;
+        }
+        usage.calls++; usage.tokens += used.tokens; usage.microUsd += used.microUsd;
+        if (step.status === "completed") {
+          check(step.usage, "INVALID_CHECKPOINT_USAGE");
+          const output = this.#validate(worker.role, step.output, rebuilt);
+          check(fingerprint(output, this.#hash) === step.outputHash &&
+            canonical(output) === canonical(step.output), "CHECKPOINT_OUTPUT_MISMATCH");
+          if (output.claims) rebuilt.claims.push(...output.claims);
+        }
+        rebuilt.steps.push(copy(step));
+      }
+      check(canonical(usage) === canonical(snapshot.usage) &&
+        usage.tokens <= fresh.job.budget.tokens && usage.microUsd <= fresh.job.budget.microUsd &&
+        usage.calls <= fresh.job.budget.calls, "CHECKPOINT_BUDGET_MISMATCH");
+      check(canonical(rebuilt.claims) === canonical(snapshot.claims), "CHECKPOINT_CLAIMS_MISMATCH");
+      check(["queued", "running", ...TERMINAL].includes(snapshot.status), "INVALID_CHECKPOINT_STATUS");
+      if (snapshot.status === "queued") check(snapshot.steps.length === 0, "INVALID_CHECKPOINT_STATUS");
+      const hasDraft = ["awaiting_approval", "approved", "rejected"].includes(snapshot.status);
+      if (hasDraft) {
+        check(rebuilt.steps.length === 5 && rebuilt.steps.every(s => s.status === "completed"), "INVALID_CHECKPOINT_STATUS");
+        const artifact = this.#render(rebuilt.steps[4].output, rebuilt);
+        check(canonical(artifact) === canonical(snapshot.artifact), "CHECKPOINT_ARTIFACT_MISMATCH");
+      } else check(snapshot.artifact === null, "INVALID_CHECKPOINT_ARTIFACT");
+      const gated = rebuilt.steps.some(s => s.status === "completed" && (
+        s.output.claims?.some(claim => claim.confidence < 0.6) ||
+        s.output.findings?.some(finding => finding.severity !== "minor")));
+      check(!gated || snapshot.status === "needs_revision", "CHECKPOINT_GATE_BYPASS");
+      check(Array.isArray(snapshot.approvals) && snapshot.approvals.length <= 1, "INVALID_CHECKPOINT_APPROVAL");
+      if (["approved", "rejected"].includes(snapshot.status)) {
+        const a = snapshot.approvals[0];
+        check(a && a.artifactHash === snapshot.artifact.hash && typeof a.actor === "string" && a.actor.trim() &&
+          a.decision === (snapshot.status === "approved" ? "approve" : "reject") &&
+          Number.isFinite(Date.parse(a.at)), "INVALID_CHECKPOINT_APPROVAL");
+      } else check(snapshot.approvals.length === 0, "INVALID_CHECKPOINT_APPROVAL");
+      const run = copy(snapshot);
+      if ((run.status === "running" && run.steps.some(s => s.status !== "completed")) ||
+        (run.status === "failed" && run.steps.at(-1)?.status === "failed" && !run.steps.at(-1).usage &&
+          ["PROVIDER_TIMEOUT", "PROVIDER_FAILURE", "INVALID_USAGE", "PROVIDER_BUDGET_VIOLATION"].includes(run.error))) {
+        run.status = "needs_reconciliation";
+        this.#event(run, "recovered_uncertain_request", {requestId: run.steps.at(-1).requestId});
+      }
+      check(run.status !== "running" || run.steps.length < 5, "INVALID_CHECKPOINT_STATUS");
+      this.#runs.set(run.id, run);
+      return copy(run);
+    } catch (error) {
+      this.#runs.delete(fresh.id); this.#events.delete(fresh.eventId); throw error;
+    }
   }
   getRun(runId) { const run = this.#runs.get(runId); check(run, "UNKNOWN_RUN"); return copy(run); }
   async cancel(runId) {
@@ -75,10 +159,10 @@ export class AstraeaCore {
     this.#busy.add(runId); run.status = "running";
     try {
       await this.#save(run);
-      for (const worker of this.#registry) {
+      for (const worker of this.#registry.slice(run.steps.length)) {
         const provider = this.#providers[worker.providerId];
         check(provider.locality !== "cloud" || run.job.allowCloud, "CLOUD_NOT_APPROVED");
-        const context = {schemaVersion: "0.1", jobId: run.jobId, runId: run.id, role: worker.role,
+        const context = {schemaVersion: "0.2", jobId: run.jobId, runId: run.id, role: worker.role,
           question: run.job.question, instruction: worker.instruction || "", sources: run.job.sources, claims: run.claims,
           priorResults: run.steps.map(s => ({role: s.role, output: s.output})), tools: []};
         const contextText = canonical(context);
@@ -115,6 +199,7 @@ export class AstraeaCore {
         check(response.usage.tokens <= worker.maxTokens && response.usage.microUsd <= worker.maxMicroUsd, "PROVIDER_BUDGET_VIOLATION");
         run.usage.tokens -= worker.maxTokens - response.usage.tokens;
         run.usage.microUsd -= worker.maxMicroUsd - response.usage.microUsd;
+        step.usage = {tokens: response.usage.tokens, microUsd: response.usage.microUsd};
         const output = this.#validate(worker.role, response.output, run);
         step.output = output; step.outputHash = fingerprint(output, this.#hash); step.status = "completed";
         step.usage = {tokens: response.usage.tokens, microUsd: response.usage.microUsd};
@@ -137,10 +222,14 @@ export class AstraeaCore {
       }
       return copy(run);
     } catch (error) {
+      if (error instanceof CoreError && error.code === "CHECKPOINT_FAILED") throw error;
       run.status = "failed";
       // Provider messages can contain secrets or raw content. Store only an allowlisted internal error code.
       run.error = error instanceof CoreError ? error.code : "PROVIDER_FAILURE";
       const active = run.steps.find(s => s.status === "running"); if (active) active.status = "failed";
+      if (active && !active.usage &&
+        ["PROVIDER_TIMEOUT", "PROVIDER_FAILURE", "INVALID_USAGE", "PROVIDER_BUDGET_VIOLATION"].includes(run.error))
+        run.status = "needs_reconciliation";
       this.#event(run, "failed", {code: run.error});
       await this.#save(run);
       return copy(run);
@@ -196,14 +285,70 @@ export class AstraeaCore {
     for (const source of run.job.sources) lines.push("- " + source.id + ": " + literal(source.title) + " — " +
       literal(source.locator) + " (sha256 " + source.contentHash + ")", "");
     const markdown = lines.join("\n");
-    const manifest = {schemaVersion: "0.1", origin: "agent", jobId: run.jobId, runId: run.id,
+    const manifest = {schemaVersion: "0.2", origin: "agent", jobId: run.jobId, runId: run.id,
       sourceIds: run.job.sources.map(s => s.id), sources: run.job.sources.map(({content, ...s}) => s),
       claims: copy(run.claims), workers: run.steps.map(s => ({workerId: s.workerId, role: s.role,
         providerId: s.providerId, modelId: s.modelId, contextHash: s.contextHash, outputHash: s.outputHash})),
-      registryHash: run.registryHash, approvalStatus: "pending"};
+      registryHash: run.registryHash, approvalStatus: "pending",
+      ...(run.reconciliations?.length ? {reconciliations: run.reconciliations.map(r => ({
+        decisionId: r.decisionId, commandHash: r.commandHash, actor: r.actor,
+        requestId: r.requestId, evidenceRef: r.evidenceRef, at: r.at}))} : {})};
     // The approval digest covers BOTH rendered content and its evidence/provenance manifest.
     return {path: "AstraeaCore/drafts/" + run.id + "/synthesis.md", markdown, contentHash: digestText(markdown, this.#hash), manifest,
       hash: fingerprint({markdown, manifest}, this.#hash)};
+  }
+
+  // Privileged host operation. DurableAstraea authenticates the operator before calling this method.
+  async reconcile(runId, command, actor) {
+    const run = this.#runs.get(runId); check(run, "UNKNOWN_RUN");
+    check(!this.#busy.has(runId), "RUN_BUSY");
+    id(command.decisionId); textValue(actor, "INVALID_ACTOR", 200);
+    textValue(command.reason, "RECONCILIATION_REASON_REQUIRED", 2000);
+    textValue(command.evidenceRef, "RECONCILIATION_EVIDENCE_REQUIRED", 500);
+    check(["record_completed", "abandon"].includes(command.kind), "INVALID_RECONCILIATION_KIND");
+    const commandHash = fingerprint(command, this.#hash);
+    const prior = (run.reconciliations || []).find(r => r.decisionId === command.decisionId);
+    if (prior) { check(prior.commandHash === commandHash, "RECONCILIATION_ID_COLLISION"); return copy(run); }
+    check(run.status === "needs_reconciliation", "NO_UNCERTAIN_REQUEST");
+    check(command.expectedCheckpointHash === fingerprint(run, this.#hash), "STALE_RECONCILIATION");
+    const step = run.steps.at(-1), worker = this.#registry[run.steps.length - 1];
+    check(step && ["running", "failed"].includes(step.status) && !step.usage &&
+      command.requestId === step.requestId, "RECONCILIATION_REQUEST_MISMATCH");
+    check((run.reconciliations || []).length < 100, "RECONCILIATION_HISTORY_FULL");
+    let output, usage;
+    if (command.kind === "record_completed") {
+      const receipt = command.receipt;
+      check(receipt && receipt.requestId === step.requestId && receipt.providerId === step.providerId &&
+        receipt.modelId === step.modelId && Number.isFinite(Date.parse(receipt.receivedAt)), "INVALID_RECONCILIATION_RECEIPT");
+      integer(receipt.usage?.tokens, "INVALID_USAGE"); integer(receipt.usage?.microUsd, "INVALID_USAGE");
+      check(receipt.usage.tokens <= worker.maxTokens && receipt.usage.microUsd <= worker.maxMicroUsd, "PROVIDER_BUDGET_VIOLATION");
+      output = this.#validate(worker.role, receipt.output, run);
+      usage = {tokens: receipt.usage.tokens, microUsd: receipt.usage.microUsd};
+    }
+    // Validate everything before applying a settlement. No provider invocation occurs here.
+    const next = copy(run);
+    next.reconciliations ||= [];
+    const record = {decisionId: command.decisionId, commandHash, actor, kind: command.kind,
+      requestId: step.requestId, reason: command.reason, evidenceRef: command.evidenceRef,
+      at: new Date(this.#clock()).toISOString()};
+    next.reconciliations.push(record);
+    if (command.kind === "abandon") {
+      next.status = "cancelled"; // Unknown charges remain fully reserved.
+    } else {
+      const settled = next.steps.at(-1);
+      settled.status = "completed"; settled.output = output; settled.outputHash = fingerprint(output, this.#hash);
+      settled.usage = usage;
+      next.usage.tokens -= worker.maxTokens - usage.tokens;
+      next.usage.microUsd -= worker.maxMicroUsd - usage.microUsd;
+      if (output.claims) next.claims.push(...output.claims);
+      next.status = "running"; next.error = null;
+      if (output.claims?.some(c => c.confidence < 0.6) || output.findings?.some(f => f.severity !== "minor")) next.status = "needs_revision";
+      if (worker.role === "Synthesizer") { next.artifact = this.#render(output, next); next.status = "awaiting_approval"; }
+    }
+    this.#event(next, "reconciled", record);
+    this.#busy.add(runId);
+    try {await this.#save(next); this.#runs.set(runId, next); return copy(next);}
+    finally {this.#busy.delete(runId);}
   }
   async review(runId, {actor, artifactHash, decision}) {
     const run = this.#runs.get(runId); check(run, "UNKNOWN_RUN");
@@ -212,9 +357,12 @@ export class AstraeaCore {
     textValue(actor, "INVALID_ACTOR", 200);
     check(run.artifact.hash === artifactHash, "STALE_APPROVAL");
     check(["approve", "reject"].includes(decision), "INVALID_DECISION");
-    run.approvals.push({actor, artifactHash, decision, at: new Date(this.#clock()).toISOString()});
-    run.status = decision === "approve" ? "approved" : "rejected";
-    this.#event(run, "reviewed", {actor, artifactHash, decision});
-    await this.#save(run); return copy(run);
+    const next = copy(run);
+    next.approvals.push({actor, artifactHash, decision, at: new Date(this.#clock()).toISOString()});
+    next.status = decision === "approve" ? "approved" : "rejected";
+    this.#event(next, "reviewed", {actor, artifactHash, decision});
+    this.#busy.add(runId);
+    try {await this.#save(next); this.#runs.set(runId, next); return copy(next);}
+    finally {this.#busy.delete(runId);}
   }
 }

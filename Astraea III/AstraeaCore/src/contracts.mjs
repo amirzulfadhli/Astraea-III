@@ -49,7 +49,14 @@ export function sourceRecord(input, hash) {
   check(typeof input.retrievedAt === "string" && /^\d{4}-\d\d-\d\dT/.test(input.retrievedAt) &&
     Number.isFinite(Date.parse(input.retrievedAt)), "INVALID_SOURCE_DATE");
   textValue(input.extractionMethod, "INVALID_EXTRACTION_METHOD", 100);
-  return { schemaVersion: "0.1", id: input.id, title: input.title, kind: input.kind,
+  let provenance;
+  if (input.provenance !== undefined) {
+    const value = input.provenance;
+    check(value && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value.repository) &&
+      /^[a-f0-9]{40}$/.test(value.commit) && /^[a-f0-9]{40}$/.test(value.blob), "INVALID_GIT_PROVENANCE");
+    provenance = {repository: value.repository, commit: value.commit, blob: value.blob};
+  }
+  return { ...(provenance ? {provenance} : {}), schemaVersion: "0.1", id: input.id, title: input.title, kind: input.kind,
     locator: input.locator, privacy: input.privacy, retrievedAt: input.retrievedAt,
     extractionMethod: input.extractionMethod, content: input.content,
     contentHash: digestText(input.content, hash) };

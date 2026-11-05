@@ -1,4 +1,4 @@
-# Astraea Core: v0 foundation
+# Astraea Core: v0.2
 
 Core now executes a bounded Scout → Researcher → Analyst → Critic → Synthesizer workflow using replaceable provider adapters. It returns a source-attributed Markdown draft and provenance manifest, then waits for an explicit human review.
 
@@ -11,7 +11,7 @@ node "Astraea III/AstraeaCore/test/run.mjs"
 node "Astraea III/AstraeaCore/examples/demo.mjs"
 ```
 
-There are no third-party dependencies. The example reads the registry, computes fixture results, and writes only to stdout. It does not invoke a local model or access a laptop. The fixture is a contract demonstration, not a real research result.
+There are no third-party dependencies. Durable storage requires a Node release with built-in node:sqlite (CI covers current Node 22 and 24). See [v0.2 storage and recovery](v0.2.md) for the durable API. The example reads the registry, computes fixture results, and writes only to stdout. It does not invoke a local model or access a laptop. The fixture is a contract demonstration, not a real research result.
 
 ## Modules and trust boundary
 
@@ -24,7 +24,7 @@ There are no third-party dependencies. The example reads the registry, computes 
 | `examples/fixture.mjs` | In-process deterministic adapter and input fixture |
 | `test/suite.mjs` | Portable behavior suite shared by Node and cloud verification |
 
-The runtime owns no filesystem, Git credentials, shell, fetch client, provider SDK, or Obsidian handle. An injected adapter is trusted host code: this interface does not sandbox arbitrary JavaScript. Worker context receives copied data and an empty tool list. Source content is untrusted data; a prompt cannot change the Core's validation, approval state, permissions, or paths.
+The computational Core owns no filesystem, Git credentials, shell, fetch client, provider SDK, or Obsidian handle. Separate v0.2 adapters provide explicitly located operational storage and read-only GitHub access. An injected adapter is trusted host code: this interface does not sandbox arbitrary JavaScript. Worker context receives copied data and an empty tool list. Source content is untrusted data; a prompt cannot change the Core's validation, approval state, permissions, or paths.
 
 Existing specialist prompts are preserved and referenced in the registry. The inline role instructions are operative for this milestone; prompt-reference resolution is not yet implemented.
 
@@ -55,11 +55,11 @@ Claims with confidence below 0.6 or major/blocking critique stop at `needs_revis
 
 Core keeps state in memory; `getRun()` returns a defensive snapshot. Working context is reconstructed per step; persistent memory is not implemented or inferred from model output. Source snapshots, derived claims/drafts and operational state remain separate objects.
 
-An optional awaited `checkpoint(runSnapshot)` hook allows a future trusted storage adapter to persist state. A checkpoint is acknowledged before dispatch and after validation. Failure stops execution. Snapshots include private source content and must be stored in approved cloud storage, not blindly committed.
+The awaited `checkpoint(runSnapshot)` hook is now implemented by the optional durable service and SQLite storage adapter. A checkpoint is acknowledged before dispatch and after validation. Failure stops execution. Snapshots include private source content and must be stored in approved cloud storage, not blindly committed.
 
 Core reserves the full per-request token/cost cap and checkpoints it before invocation. A valid receipt refunds unused capacity. A missing/invalid receipt, exception, or timeout retains the reservation. A valid receipt is charged even if output validation fails. Audits use internal failure codes rather than provider error strings, which can contain credentials. Each step has one attempt; there is no automatic retry of a possibly charged request. Late responses after timeout cannot update the run. Adapter cancellation and provider billing behavior still require live integration tests.
 
-Per-request deadlines and maximum calls bound the workflow. General DAG scheduling, a separate total-job deadline, durable cross-process event locking, restart/resume, multi-process concurrency, and reconciliation of uncertain requests are deferred. A failed or revision-needed run remains terminal; a human may create a new run with a new event ID after inspecting the audit.
+Per-request deadlines and maximum calls bound the workflow. The v0.2 durable service adds shared-store event uniqueness, fenced cross-process leases and validated restart/resume. General DAG scheduling, total-job deadlines and provider outcome reconciliation remain deferred. An uncertain in-flight request recovers to needs_reconciliation without another call or a budget refund. Failed and revision-needed runs remain terminal.
 
 ## GitHub and Obsidian boundary
 
@@ -77,6 +77,10 @@ This is a **decision layer only**: it performs no Git command, file write, pull,
 
 Pull failure must preserve the checkout; validation failure retains drafts; commit failure prevents push; push failure retains the unpushed commit for reconciliation. Rollback uses a new revert commit. No adapter may force-push, rewrite history or reset away existing work.
 
-## Next milestone
+## v0.2 and next milestone
 
-Add an atomic cloud checkpoint adapter with restart reconciliation, then a read-only Git observation adapter tested on temporary repositories. Only after those pass should an approval-bound draft writer and fast-forward-only commit/push adapter be enabled. Real model adapters, external source capture and evaluation follow behind explicit credentials/privacy policy.
+See [v0.2 storage and recovery](v0.2.md), [ADR-003](decisions/ADR-003-durable-recovery-and-read-only-snapshots.md), and [development progress](development/v0.2.md). SQLite persistence and read-only GitHub snapshots are implemented; no mutation adapter is enabled. Next: authenticated reconciliation/operator tools and cloud backup/restore verification before any approved writer.
+
+## Storage operations milestone
+
+The pending v0.2 native checks are verified. See [cloud storage and recovery operations](operations.md) and [ADR-004](decisions/ADR-004-free-first-storage-operations.md) for zero-cost volume setup, online backups, quarantined restore, authenticated reconciliation and explicit schema upgrades. Live provisioning awaits a provider choice; no paid resources or mutation-capable vault integration is enabled.
