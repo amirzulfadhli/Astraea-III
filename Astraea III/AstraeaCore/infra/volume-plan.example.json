@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1",
+  "environment": "cloud",
+  "provider": null,
+  "accountId": null,
+  "region": null,
+  "volumeId": null,
+  "mountPath": null,
+  "budgetMicroUsd": 0,
+  "estimatedMonthlyMicroUsd": 0
+}

@@ -399,5 +399,77 @@ export async function runSuite(api, hash) {
     saved.job.sources[0].contentHash = "a".repeat(64);
     await rejects(() => setup().core.restoreRun(saved), "CHECKPOINT_IDENTITY_MISMATCH");
   });
+
+  async function uncertain(role = "Scout") {
+    const base = fixtureProvider(); let failed = false;
+    const s = setup({provider: {locality: "local", execute(request) {
+      if (request.role === role && !failed) {failed = true; throw new Error("unknown outcome");}
+      return base.execute(request);
+    }}});
+    s.core.createRun(s.job); const run = await s.core.execute(s.job.runId);
+    const command = {decisionId: "D1", kind: "record_completed", requestId: s.job.runId + ":" + role,
+      reason: "Verified receipt", evidenceRef: "provider-ledger:receipt-1",
+      expectedCheckpointHash: fingerprint(run, hash),
+      receipt: {requestId: s.job.runId + ":" + role, providerId: "fixture", modelId: "fixture-v0",
+        receivedAt: "2026-11-05T00:00:00Z", usage: {tokens: 13, microUsd: 0}, output: {questions: ["Scope"]}}};
+    return {...s, run, command};
+  }
+  await test("provider failure immediately pauses as an uncertain request", async () => {
+    const {run} = await uncertain(); eq(run.status, "needs_reconciliation"); eq(run.usage.tokens, 1000);
+  });
+  await test("verified completion settles once without another provider invocation", async () => {
+    const {core, job, calls, command} = await uncertain();
+    const result = await core.reconcile(job.runId, command, "verified-human");
+    eq(calls.length, 1); eq(result.steps[0].status, "completed"); eq(result.usage.tokens, 13);
+    const final = await core.execute(job.runId);
+    eq(final.status, "awaiting_approval"); eq(calls.map(c => c.role), roles); eq(final.usage.calls, 5);
+    eq(final.artifact.manifest.reconciliations[0].decisionId, command.decisionId);
+    setup().core.restoreRun(final);
+  });
+  await test("identical reconciliation is idempotent", async () => {
+    const {core, job, command} = await uncertain();
+    const first = await core.reconcile(job.runId, command, "human");
+    const second = await core.reconcile(job.runId, command, "human");
+    eq(second.usage, first.usage); eq(second.reconciliations.length, 1);
+  });
+  await test("reused reconciliation ID rejects changed contents", async () => {
+    const {core, job, command} = await uncertain(); await core.reconcile(job.runId, command, "human");
+    await rejects(() => core.reconcile(job.runId, {...command, reason: "changed"}, "human"), "RECONCILIATION_ID_COLLISION");
+  });
+  await test("stale reconciliation hashes preserve the original request", async () => {
+    const {core, job, command, run} = await uncertain(); command.expectedCheckpointHash = "f".repeat(64);
+    await rejects(() => core.reconcile(job.runId, command, "human"), "STALE_RECONCILIATION");
+    eq(core.getRun(job.runId), run);
+  });
+  await test("receipt for another request cannot settle this request", async () => {
+    const {core, job, command} = await uncertain(); command.receipt.requestId = "other:Scout";
+    await rejects(() => core.reconcile(job.runId, command, "human"), "INVALID_RECONCILIATION_RECEIPT");
+  });
+  await test("unverified retry/not-started decisions are not supported", async () => {
+    const {core, job, command} = await uncertain(); command.kind = "retry";
+    await rejects(() => core.reconcile(job.runId, command, "human"), "INVALID_RECONCILIATION_KIND");
+  });
+  await test("abandoning an uncertain request preserves its reserved budget", async () => {
+    const {core, job, calls, command} = await uncertain();
+    const result = await core.reconcile(job.runId, {...command, kind: "abandon"}, "human");
+    eq(result.status, "cancelled"); eq(result.usage.tokens, 1000);
+    await core.execute(job.runId); eq(calls.length, 1); setup().core.restoreRun(result);
+  });
+  await test("receipt over the original cap cannot refund or alter the request", async () => {
+    const {core, job, command, run} = await uncertain(); command.receipt.usage.tokens = 1001;
+    await rejects(() => core.reconcile(job.runId, command, "human"), "PROVIDER_BUDGET_VIOLATION"); eq(core.getRun(job.runId), run);
+  });
+  await test("reconciled major critique still stops before synthesis", async () => {
+    const {core, job, calls, command} = await uncertain("Critic"); command.receipt.output = {
+      findings: [{severity: "major", text: "Contradictory evidence"}]};
+    const result = await core.reconcile(job.runId, command, "human"); eq(result.status, "needs_revision");
+    await core.execute(job.runId); eq(calls.length, 4); setup().core.restoreRun(result);
+  });
+  await test("reconciled synthesis still requires separate human approval", async () => {
+    const {core, job, command} = await uncertain("Synthesizer"); command.receipt.output = {
+      title: "Recovered draft", sections: [{heading: "Evidence", claimIds: ["C1", "C2"]}]};
+    const result = await core.reconcile(job.runId, command, "human");
+    eq(result.status, "awaiting_approval"); eq(result.approvals.length, 0); setup().core.restoreRun(result);
+  });
   return {passed: results.filter(r => r.passed).length, failed: results.filter(r => !r.passed).length, results};
 }

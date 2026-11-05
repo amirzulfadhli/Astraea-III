@@ -1,12 +1,12 @@
-import {DatabaseSync} from "node:sqlite";
+import {DatabaseSync, backup} from "node:sqlite";
 import {mkdir, realpath, lstat, chmod} from "node:fs/promises";
 import {resolve, relative, isAbsolute, parse, join, sep} from "node:path";
-import {createHash} from "node:crypto";
+import {createHash, randomUUID} from "node:crypto";
 import {check, CoreError, id, integer, canonical, fingerprint} from "./contracts.mjs";
 
 export const sha256 = value => createHash("sha256").update(value, "utf8").digest("hex");
 function inside(parent, child) { const p = relative(parent, child); return p === "" || (p !== ".." && !p.startsWith(".." + sep) && !isAbsolute(p)); }
-async function noSymlinks(path) {
+export async function noSymlinks(path) {
   const absolute = resolve(path); let part = parse(absolute).root;
   for (const name of absolute.slice(part.length).split(/[\\/]/).filter(Boolean)) {
     part = join(part, name);
@@ -14,36 +14,45 @@ async function noSymlinks(path) {
     catch (error) { if (error.code !== "ENOENT") throw error; }
   }
 }
+export async function privateDirectory(directory, forbiddenRoots) {
+  check(isAbsolute(directory) && Array.isArray(forbiddenRoots) && forbiddenRoots.length > 0 &&
+    forbiddenRoots.every(isAbsolute), "INVALID_STORE_LOCATION");
+  await noSymlinks(directory);
+  const roots = await Promise.all(forbiddenRoots.map(p => realpath(p)));
+  // Check the nearest existing ancestor BEFORE creating operational storage.
+  let ancestor = resolve(directory);
+  while (true) {
+    try { ancestor = await realpath(ancestor); break; }
+    catch (e) { if (e.code !== "ENOENT") throw e; const parent = resolve(ancestor, ".."); check(parent !== ancestor, "INVALID_STORE_LOCATION"); ancestor = parent; }
+  }
+  const target = resolve(directory);
+  check(target !== parse(target).root, "INVALID_STORE_LOCATION");
+  check(roots.every(root => !inside(root, target) && !inside(root, ancestor)), "STORE_INSIDE_REPOSITORY");
+  await mkdir(target, {recursive: true, mode: 0o700});
+  await noSymlinks(target);
+  const location = await realpath(target);
+  check(roots.every(root => !inside(root, location)), "STORE_INSIDE_REPOSITORY");
+
+  return location;
+}
 export class SqliteJobStore {
-  #db; #clock; #closed = false;
-  static async open({directory, forbiddenRoots, clock = Date.now}) {
-    check(isAbsolute(directory) && Array.isArray(forbiddenRoots) && forbiddenRoots.length > 0 &&
-      forbiddenRoots.every(isAbsolute), "INVALID_STORE_LOCATION");
-    await noSymlinks(directory);
-    const roots = await Promise.all(forbiddenRoots.map(p => realpath(p)));
-    // Check the nearest existing ancestor BEFORE creating operational storage.
-    let ancestor = resolve(directory);
-    while (true) {
-      try { ancestor = await realpath(ancestor); break; }
-      catch (e) { if (e.code !== "ENOENT") throw e; const parent = resolve(ancestor, ".."); check(parent !== ancestor, "INVALID_STORE_LOCATION"); ancestor = parent; }
-    }
-    const target = resolve(directory);
-    check(roots.every(root => !inside(root, target) && !inside(root, ancestor)), "STORE_INSIDE_REPOSITORY");
-    await mkdir(target, {recursive: true, mode: 0o700});
-    await noSymlinks(target);
-    const location = await realpath(target);
-    check(roots.every(root => !inside(root, location)), "STORE_INSIDE_REPOSITORY");
+  #db; #clock; #closed = false; #maintenance = false;
+  static async open({directory, forbiddenRoots, clock = Date.now, allowUpgrade = false}) {
+    const location = await privateDirectory(directory, forbiddenRoots);
     const databasePath = join(location, "jobs.sqlite");
     await noSymlinks(databasePath);
     const db = new DatabaseSync(databasePath);
     await chmod(databasePath, 0o600);
-    try { return new SqliteJobStore(db, clock); } catch (error) { db.close(); throw error; }
+    try { return new SqliteJobStore(db, clock, allowUpgrade); } catch (error) { db.close(); throw error; }
   }
-  constructor(db, clock) {
+  constructor(db, clock, allowUpgrade = false) {
     this.#db = db; this.#clock = clock;
     db.exec("PRAGMA busy_timeout=2000; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;");
     const version = db.prepare("PRAGMA user_version").get().user_version;
-    check(version === 0 || version === 2, "UNSUPPORTED_STORE_SCHEMA");
+    check([0, 2, 3].includes(version), "UNSUPPORTED_STORE_SCHEMA");
+    check(version !== 2 || allowUpgrade, "STORE_UPGRADE_REQUIRED");
+    db.exec("BEGIN IMMEDIATE");
+    try {
     db.exec(`
       CREATE TABLE IF NOT EXISTS runs (
         run_id TEXT PRIMARY KEY, event_id TEXT UNIQUE NOT NULL, job_hash TEXT NOT NULL,
@@ -54,10 +63,20 @@ export class SqliteJobStore {
         run_id TEXT NOT NULL, revision INTEGER NOT NULL, body TEXT NOT NULL, checksum TEXT NOT NULL,
         PRIMARY KEY (run_id, revision)
       );
-      PRAGMA user_version=2;
+      CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS reconciliation_decisions (
+        decision_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, command_hash TEXT NOT NULL
+      );
+      PRAGMA user_version=3;
     `);
+    db.prepare("INSERT OR IGNORE INTO metadata VALUES('store_id',?)").run(randomUUID());
+    db.prepare("INSERT OR IGNORE INTO metadata VALUES('quarantine','false')").run();
+    db.exec("COMMIT");
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
   }
   #transaction(fn) {
+    check(!this.#maintenance, "STORE_MAINTENANCE");
+    check(this.#db.prepare("SELECT value FROM metadata WHERE key='quarantine'").get()?.value === "false", "STORE_QUARANTINED");
     this.#db.exec("BEGIN IMMEDIATE");
     try { const result = fn(); this.#db.exec("COMMIT"); return result; }
     catch (error) { this.#db.exec("ROLLBACK"); throw error; }
@@ -108,6 +127,14 @@ export class SqliteJobStore {
         row.lease_epoch === lease.epoch && row.lease_until > this.#clock(), "LEASE_LOST");
       check(snapshot.jobHash === row.job_hash && snapshot.registryHash === row.registry_hash &&
         snapshot.eventId === row.event_id, "CHECKPOINT_IDENTITY_MISMATCH");
+      for (const decision of snapshot.reconciliations || []) {
+        id(decision.decisionId);
+        check(/^[a-f0-9]{64}$/.test(decision.commandHash), "INVALID_RECONCILIATION_HISTORY");
+        const prior = this.#db.prepare("SELECT * FROM reconciliation_decisions WHERE decision_id=?").get(decision.decisionId);
+        check(!prior || (prior.run_id === snapshot.id && prior.command_hash === decision.commandHash), "RECONCILIATION_ID_COLLISION");
+        if (!prior) this.#db.prepare("INSERT INTO reconciliation_decisions VALUES(?,?,?)")
+          .run(decision.decisionId, snapshot.id, decision.commandHash);
+      }
       const body = canonical(snapshot), checksum = fingerprint(snapshot, sha256), revision = row.revision + 1;
       this.#db.prepare("UPDATE runs SET body=?,checksum=?,revision=?,lease_until=? WHERE run_id=?")
         .run(body, checksum, revision, this.#clock() + lease.leaseMs, snapshot.id);
@@ -119,5 +146,15 @@ export class SqliteJobStore {
     this.#db.prepare("UPDATE runs SET lease_owner=NULL,lease_until=0 WHERE run_id=? AND lease_owner=? AND lease_epoch=?")
       .run(lease.runId, lease.owner, lease.epoch);
   }
-  close() { if (!this.#closed) { this.#db.close(); this.#closed = true; } }
+  inspect() {
+    return {storeId: this.#db.prepare("SELECT value FROM metadata WHERE key='store_id'").get().value,
+      quarantine: this.#db.prepare("SELECT value FROM metadata WHERE key='quarantine'").get().value === "true",
+      schemaVersion: 3, runCount: this.#db.prepare("SELECT count(*) AS n FROM runs").get().n};
+  }
+  listRunIds() { return this.#db.prepare("SELECT run_id FROM runs ORDER BY run_id").all().map(row => row.run_id); }
+  async backupTo(destination) {
+    check(!this.#maintenance, "STORE_MAINTENANCE"); this.#maintenance = true;
+    try { return await backup(this.#db, destination); } finally {this.#maintenance = false;}
+  }
+  close() { check(!this.#maintenance, "STORE_MAINTENANCE"); if (!this.#closed) { this.#db.close(); this.#closed = true; } }
 }

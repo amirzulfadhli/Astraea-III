@@ -80,3 +80,7 @@ Pull failure must preserve the checkout; validation failure retains drafts; comm
 ## v0.2 and next milestone
 
 See [v0.2 storage and recovery](v0.2.md), [ADR-003](decisions/ADR-003-durable-recovery-and-read-only-snapshots.md), and [development progress](development/v0.2.md). SQLite persistence and read-only GitHub snapshots are implemented; no mutation adapter is enabled. Next: authenticated reconciliation/operator tools and cloud backup/restore verification before any approved writer.
+
+## Storage operations milestone
+
+The pending v0.2 native checks are verified. See [cloud storage and recovery operations](operations.md) and [ADR-004](decisions/ADR-004-free-first-storage-operations.md) for zero-cost volume setup, online backups, quarantined restore, authenticated reconciliation and explicit schema upgrades. Live provisioning awaits a provider choice; no paid resources or mutation-capable vault integration is enabled.
